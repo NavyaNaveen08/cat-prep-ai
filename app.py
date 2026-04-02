@@ -27,42 +27,50 @@ lessons_done = st.slider("Lessons Completed", 0, 20, 5)
 if st.button("Generate Analysis"):
 
     # -------------------- PREPARE DATA --------------------
-    min_score = min(qa, varc, di, lr)
+    
 
-    user_data = pd.DataFrame({
-        'QA':[qa],
-        'VARC':[varc],
-        'DI':[di],
-        'LR':[lr],
-        'QA_diff':[qa - min_score],
-        'VARC_diff':[varc - min_score],
-        'DI_diff':[di - min_score],
-        'LR_diff':[lr - min_score],
-        'LessonsDone':[lessons_done]
-    })
+       # -------------------- PREPARE DATA --------------------
 
     min_score = min(qa, varc, di, lr)
-
-    user_data['QA_diff'] = qa - min_score
-    user_data['VARC_diff'] = varc - min_score
-    user_data['DI_diff'] = di - min_score
-    user_data['LR_diff'] = lr - min_score
-
-    user_data['LessonsDone'] = lessons_done
-
+    
+    data_dict = {
+        'QA': qa,
+        'VARC': varc,
+        'DI': di,
+        'LR': lr,
+        'QA_diff': qa - min_score,
+        'VARC_diff': varc - min_score,
+        'DI_diff': di - min_score,
+        'LR_diff': lr - min_score,
+        'LessonsDone': lessons_done
+    }
+    
+    user_data = pd.DataFrame([data_dict])
+    
     # -------------------- MODEL 1 --------------------
+    
     weak_topic = weak_model.predict(user_data)[0]
-
+    
     st.subheader("📉 Your Weak Area")
     st.success(weak_topic)
-
-    # -------------------- ENCODE --------------------
+    
+    # -------------------- ADD ENCODE --------------------
+    
     weak_map = {'QA':0,'VARC':1,'DI':2,'LR':3}
     user_data['WeakTopicEncoded'] = weak_map[weak_topic]
-
+    
+    # -------------------- FORCE COLUMN ORDER --------------------
+    
+    final_columns = ['QA','VARC','DI','LR',
+                     'QA_diff','VARC_diff','DI_diff','LR_diff',
+                     'LessonsDone','WeakTopicEncoded']
+    
+    user_data = user_data[final_columns]
+    
     # -------------------- MODEL 2 --------------------
+    
     topics = []
-
+    
     for _ in range(5):
         topic = mock_model.predict(user_data)[0]
         topics.append(topic)
