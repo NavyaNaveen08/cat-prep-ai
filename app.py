@@ -3,27 +3,42 @@ import pickle
 import pandas as pd
 import random
 
+if "questions" not in st.session_state:
+    st.session_state.questions = []
 # -------------------- PAGE CONFIG --------------------
 st.set_page_config(page_title="CAT Prep AI", layout="centered")
 
 # -------------------- CUSTOM STYLING --------------------
 st.markdown("""
 <style>
-.big-title {
-    font-size:32px !important;
-    font-weight:700;
-    color:#4B8BBE;
+body {
+    background-color: #f5f7fa;
 }
+
+.big-title {
+    font-size:36px !important;
+    font-weight:800;
+    color:#6C63FF;
+    text-align:center;
+}
+
 .sub-text {
     font-size:18px;
-    color:#555;
+    color:#444;
+    text-align:center;
 }
-.stButton>button {
-    background-color:#4CAF50;
-    color:white;
-    border-radius:10px;
-    height:3em;
-    width:100%;
+
+div.stButton > button {
+    background: linear-gradient(90deg, #6C63FF, #00C9A7);
+    color: white;
+    border-radius: 12px;
+    height: 3em;
+    font-size:16px;
+    border: none;
+}
+
+div.stButton > button:hover {
+    background: linear-gradient(90deg, #5a54d1, #00a98b);
 }
 </style>
 """, unsafe_allow_html=True)
@@ -52,6 +67,14 @@ lessons_done = st.slider("Lessons Completed", 0, 20, 5)
 
 # -------------------- BUTTON --------------------
 if st.button("✨ Generate Analysis"):
+    st.session_state.generated = True
+
+if "generated" in st.session_state:
+
+    # your models run here
+
+    if st.button("🚀 Submit Test"):
+        # scoring logic
 
     # -------------------- MODEL 1 INPUT --------------------
     min_score = min(qa, varc, di, lr)
@@ -122,27 +145,32 @@ if st.button("✨ Generate Analysis"):
 
     # -------------------- MOCK TEST --------------------
     st.subheader("📝 Your Personalized Mock")
-
+    
     num_questions = 3
-    selected_questions = random.sample(question_bank[topic], num_questions)
-
-    user_answers = []
-
-    for i, q in enumerate(selected_questions):
-        ans = st.text_input(f"Q{i+1}: {q['q']}")
-        user_answers.append(ans)
-
+    
+    # Store questions only once
+    if "questions" not in st.session_state:
+        st.session_state.questions = random.sample(question_bank[topic], num_questions)
+    
+    questions = st.session_state.questions
+    
+    # Store answers
+    answers = []
+    
+    for i, q in enumerate(questions):
+        ans = st.text_input(f"Q{i+1}: {q['q']}", key=f"q_{i}")
+        answers.append(ans)
+    
     # -------------------- SUBMIT --------------------
     if st.button("🚀 Submit Test"):
-
+    
         score = 0
-
+    
         for i in range(num_questions):
-            if user_answers[i].lower() == selected_questions[i]['a']:
+            if answers[i].lower() == questions[i]['a']:
                 score += 1
-
+    
         st.success(f"🎯 Score: {score}/{num_questions}")
-
         # -------------------- STREAK --------------------
         if score == num_questions:
             st.session_state.streak += 1
