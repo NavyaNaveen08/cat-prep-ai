@@ -108,4 +108,3 @@ if st.button("Generate Analysis"):
     for i, t in enumerate(topics):
         q = random.choice(question_bank[t])
         st.write(f"Q{i+1}: {q}")
-st.write("Columns passed to model:", user_data.columns)
