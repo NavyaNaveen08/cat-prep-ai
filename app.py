@@ -73,7 +73,7 @@ if "generated" in st.session_state:
 
     # your models run here
 
-    if st.button("🚀 Submit Test"):
+if st.button("🚀 Submit Test"):
         # scoring logic
 
     # -------------------- MODEL 1 INPUT --------------------
