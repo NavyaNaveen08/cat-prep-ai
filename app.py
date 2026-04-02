@@ -27,11 +27,18 @@ lessons_done = st.slider("Lessons Completed", 0, 20, 5)
 if st.button("Generate Analysis"):
 
     # -------------------- PREPARE DATA --------------------
+    min_score = min(qa, varc, di, lr)
+
     user_data = pd.DataFrame({
         'QA':[qa],
         'VARC':[varc],
         'DI':[di],
-        'LR':[lr]
+        'LR':[lr],
+        'QA_diff':[qa - min_score],
+        'VARC_diff':[varc - min_score],
+        'DI_diff':[di - min_score],
+        'LR_diff':[lr - min_score],
+        'LessonsDone':[lessons_done]
     })
 
     min_score = min(qa, varc, di, lr)
