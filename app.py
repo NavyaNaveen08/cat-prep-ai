@@ -11,34 +11,36 @@ if "streak" not in st.session_state:
 if "generated" not in st.session_state:
     st.session_state.generated = False
 
+# NEW: SCORE TRACKING
+if "qa_score" not in st.session_state:
+    st.session_state.qa_score = 50
+if "varc_score" not in st.session_state:
+    st.session_state.varc_score = 50
+if "di_score" not in st.session_state:
+    st.session_state.di_score = 50
+if "lr_score" not in st.session_state:
+    st.session_state.lr_score = 50
+
 # -------------------- PAGE CONFIG --------------------
 st.set_page_config(page_title="CAT Prep AI", layout="centered")
 
-# -------------------- FIXED UI STYLING --------------------
+# -------------------- UI STYLING --------------------
 st.markdown("""
 <style>
-
-/* FIXED BACKGROUND */
 [data-testid="stAppViewContainer"] {
     background: linear-gradient(135deg, #dbeafe, #f0fdf4);
 }
-
-/* Title */
 .main-title {
     font-size:40px;
     font-weight:800;
     text-align:center;
     color:#4f46e5;
 }
-
-/* Subtitle */
 .sub-text {
     text-align:center;
     color:#6b7280;
     margin-bottom:30px;
 }
-
-/* Card */
 .card {
     background:white;
     padding:20px;
@@ -46,8 +48,6 @@ st.markdown("""
     box-shadow:0px 8px 20px rgba(0,0,0,0.08);
     margin-bottom:20px;
 }
-
-/* Button */
 div.stButton > button {
     background: linear-gradient(90deg, #6366f1, #22c55e);
     color: white;
@@ -55,15 +55,12 @@ div.stButton > button {
     height: 3em;
     font-size:16px;
 }
-
-/* Streak */
 .streak {
     font-size:20px;
     font-weight:700;
     color:#f59e0b;
     text-align:center;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -80,10 +77,10 @@ st.markdown('<div class="card">', unsafe_allow_html=True)
 
 st.header("📊 Enter Your Mock Scores")
 
-qa = st.slider("QA Score", 0, 100, 50)
-varc = st.slider("VARC Score", 0, 100, 50)
-di = st.slider("DI Score", 0, 100, 50)
-lr = st.slider("LR Score", 0, 100, 50)
+qa = st.slider("QA Score", 0, 100, st.session_state.qa_score)
+varc = st.slider("VARC Score", 0, 100, st.session_state.varc_score)
+di = st.slider("DI Score", 0, 100, st.session_state.di_score)
+lr = st.slider("LR Score", 0, 100, st.session_state.lr_score)
 
 lessons_done = st.slider("Lessons Completed", 0, 20, 5)
 
@@ -147,20 +144,17 @@ if st.session_state.generated:
         ]
     }
 
-    # -------------------- GENERATE FULL TEST --------------------
+    # -------------------- MOCK TEST --------------------
     st.markdown('<div class="card">', unsafe_allow_html=True)
-
     st.subheader("📝 Adaptive Mock Test (All Subjects)")
 
     if not st.session_state.questions:
         all_questions = []
         for sub in ["QA","VARC","DI","LR"]:
             all_questions += random.sample(question_bank[sub], 2)
-
         st.session_state.questions = all_questions
 
     questions = st.session_state.questions
-
     answers = []
 
     for i, q in enumerate(questions):
@@ -184,21 +178,30 @@ if st.session_state.generated:
             if answers[i].lower() == q['a']:
                 subject_scores[subject] += 1
 
-        # -------------------- SHOW SCORES --------------------
+        # -------------------- PERFORMANCE --------------------
         st.subheader("📊 Your Performance")
 
         for sub in subject_scores:
             st.write(f"{sub}: {subject_scores[sub]}/{subject_counts[sub]}")
 
-        # -------------------- FIND WEAK AREA --------------------
-        weakest = min(subject_scores, key=subject_scores.get)
+        # -------------------- MULTIPLE WEAK AREAS --------------------
+        min_score = min(subject_scores.values())
+        weakest_subjects = [sub for sub, score in subject_scores.items() if score == min_score]
 
-        st.error(f"📉 Weakest Area (from test): {weakest}")
+        st.error(f"📉 Weakest Areas: {', '.join(weakest_subjects)}")
 
         total_score = sum(subject_scores.values())
         st.success(f"🎯 Total Score: {total_score}/8")
 
         st.progress(total_score / 8)
+
+        # -------------------- UPDATE SCORES --------------------
+        st.session_state.qa_score = int((subject_scores["QA"] / 2) * 100)
+        st.session_state.varc_score = int((subject_scores["VARC"] / 2) * 100)
+        st.session_state.di_score = int((subject_scores["DI"] / 2) * 100)
+        st.session_state.lr_score = int((subject_scores["LR"] / 2) * 100)
+
+        st.success("📊 Scores updated based on your performance!")
 
         # -------------------- STREAK --------------------
         if total_score >= 5:
@@ -207,5 +210,40 @@ if st.session_state.generated:
             st.session_state.streak = 0
 
         st.markdown(f'<div class="streak">🔥 Streak: {st.session_state.streak}</div>', unsafe_allow_html=True)
+
+        # -------------------- STUDY PLAN --------------------
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+
+        st.subheader("📚 Personalized Study Plan")
+
+        study_plan = {
+            "QA": [
+                "Revise arithmetic formulas",
+                "Practice 10 quant questions",
+                "Focus on weak topics"
+            ],
+            "VARC": [
+                "Read 2 articles (Aeon/TOI)",
+                "Practice RC passages",
+                "Revise vocabulary"
+            ],
+            "DI": [
+                "Solve DI sets",
+                "Practice graphs/tables",
+                "Improve calculations"
+            ],
+            "LR": [
+                "Solve puzzles",
+                "Practice arrangements",
+                "Work on patterns"
+            ]
+        }
+
+        for sub in weakest_subjects:
+            st.markdown(f"### 🔹 {sub}")
+            for task in study_plan[sub]:
+                st.write(f"✅ {task}")
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
