@@ -11,7 +11,7 @@ if "streak" not in st.session_state:
 if "generated" not in st.session_state:
     st.session_state.generated = False
 
-# SCORE STATE
+# NEW: SCORE TRACKING
 if "qa_score" not in st.session_state:
     st.session_state.qa_score = 50
 if "varc_score" not in st.session_state:
@@ -20,21 +20,6 @@ if "di_score" not in st.session_state:
     st.session_state.di_score = 50
 if "lr_score" not in st.session_state:
     st.session_state.lr_score = 50
-
-# 🔥 NEW: SAFE UPDATE STORAGE
-if "pending_update" not in st.session_state:
-    st.session_state.pending_update = None
-
-# -------------------- APPLY UPDATE (TOP ONLY) --------------------
-if st.session_state.pending_update is not None:
-    upd = st.session_state.pending_update
-
-    st.session_state.qa_score = upd["QA"]
-    st.session_state.varc_score = upd["VARC"]
-    st.session_state.di_score = upd["DI"]
-    st.session_state.lr_score = upd["LR"]
-
-    st.session_state.pending_update = None
 
 # -------------------- PAGE CONFIG --------------------
 st.set_page_config(page_title="CAT Prep AI", layout="centered")
@@ -92,11 +77,10 @@ st.markdown('<div class="card">', unsafe_allow_html=True)
 
 st.header("📊 Enter Your Mock Scores")
 
-# 🔥 FIX: bind sliders to session_state
-qa = st.slider("QA Score", 0, 100, key="qa_score")
-varc = st.slider("VARC Score", 0, 100, key="varc_score")
-di = st.slider("DI Score", 0, 100, key="di_score")
-lr = st.slider("LR Score", 0, 100, key="lr_score")
+qa = st.slider("QA Score", 0, 100, st.session_state.qa_score)
+varc = st.slider("VARC Score", 0, 100, st.session_state.varc_score)
+di = st.slider("DI Score", 0, 100, st.session_state.di_score)
+lr = st.slider("LR Score", 0, 100, st.session_state.lr_score)
 
 lessons_done = st.slider("Lessons Completed", 0, 20, 5)
 
@@ -200,7 +184,7 @@ if st.session_state.generated:
         for sub in subject_scores:
             st.write(f"{sub}: {subject_scores[sub]}/{subject_counts[sub]}")
 
-        # -------------------- MULTIPLE WEAK --------------------
+        # -------------------- MULTIPLE WEAK AREAS --------------------
         min_score = min(subject_scores.values())
         weakest_subjects = [sub for sub, score in subject_scores.items() if score == min_score]
 
@@ -208,15 +192,14 @@ if st.session_state.generated:
 
         total_score = sum(subject_scores.values())
         st.success(f"🎯 Total Score: {total_score}/8")
+
         st.progress(total_score / 8)
 
-        # 🔥 FIX: STORE UPDATE (NOT DIRECT)
-        st.session_state.pending_update = {
-            "QA": int((subject_scores["QA"] / 2) * 100),
-            "VARC": int((subject_scores["VARC"] / 2) * 100),
-            "DI": int((subject_scores["DI"] / 2) * 100),
-            "LR": int((subject_scores["LR"] / 2) * 100),
-        }
+        # -------------------- UPDATE SCORES --------------------
+        st.session_state.qa_score = int((subject_scores["QA"] / 2) * 100)
+        st.session_state.varc_score = int((subject_scores["VARC"] / 2) * 100)
+        st.session_state.di_score = int((subject_scores["DI"] / 2) * 100)
+        st.session_state.lr_score = int((subject_scores["LR"] / 2) * 100)
 
         st.success("📊 Scores updated based on your performance!")
 
@@ -234,10 +217,26 @@ if st.session_state.generated:
         st.subheader("📚 Personalized Study Plan")
 
         study_plan = {
-            "QA": ["Revise arithmetic formulas","Practice 10 quant questions","Focus on weak topics"],
-            "VARC": ["Read 2 articles","Practice RC passages","Revise vocabulary"],
-            "DI": ["Solve DI sets","Practice graphs","Improve calculations"],
-            "LR": ["Solve puzzles","Practice arrangements","Work on patterns"]
+            "QA": [
+                "Revise arithmetic formulas",
+                "Practice 10 quant questions",
+                "Focus on weak topics"
+            ],
+            "VARC": [
+                "Read 2 articles (Aeon/TOI)",
+                "Practice RC passages",
+                "Revise vocabulary"
+            ],
+            "DI": [
+                "Solve DI sets",
+                "Practice graphs/tables",
+                "Improve calculations"
+            ],
+            "LR": [
+                "Solve puzzles",
+                "Practice arrangements",
+                "Work on patterns"
+            ]
         }
 
         for sub in weakest_subjects:
@@ -246,8 +245,5 @@ if st.session_state.generated:
                 st.write(f"✅ {task}")
 
         st.markdown('</div>', unsafe_allow_html=True)
-
-        # 🔥 RERUN
-        st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
