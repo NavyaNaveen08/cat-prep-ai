@@ -69,9 +69,9 @@ if st.button("Generate Analysis"):
     'LessonsDone':[lessons_done]
     })
     # -------------------- MODEL 2 --------------------
-    
+    topics=[]
     topic = mock_model.predict(model2_input)[0]
-
+    topics.append(topic)
 
     st.subheader("🧠 AI Recommended Mock Topics")
     st.write(topics)
