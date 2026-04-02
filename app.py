@@ -11,7 +11,7 @@ if "streak" not in st.session_state:
 if "generated" not in st.session_state:
     st.session_state.generated = False
 
-# IMPORTANT: scores must exist BEFORE sliders
+# SCORE STATE
 if "qa_score" not in st.session_state:
     st.session_state.qa_score = 50
 if "varc_score" not in st.session_state:
@@ -20,6 +20,21 @@ if "di_score" not in st.session_state:
     st.session_state.di_score = 50
 if "lr_score" not in st.session_state:
     st.session_state.lr_score = 50
+
+# NEW: temp update storage
+if "update_scores" not in st.session_state:
+    st.session_state.update_scores = None
+
+# -------------------- APPLY SCORE UPDATE (SAFE PLACE) --------------------
+if st.session_state.update_scores is not None:
+    scores = st.session_state.update_scores
+
+    st.session_state.qa_score = scores["QA"]
+    st.session_state.varc_score = scores["VARC"]
+    st.session_state.di_score = scores["DI"]
+    st.session_state.lr_score = scores["LR"]
+
+    st.session_state.update_scores = None  # reset
 
 # -------------------- PAGE CONFIG --------------------
 st.set_page_config(page_title="CAT Prep AI", layout="centered")
@@ -58,7 +73,7 @@ div.stButton > button {
 </style>
 """, unsafe_allow_html=True)
 
-# -------------------- LOAD MODELS --------------------
+# -------------------- LOAD MODEL --------------------
 weak_model = pickle.load(open('adaptive_weak_topic_model_large.pkl','rb'))
 
 # -------------------- TITLE --------------------
@@ -69,7 +84,6 @@ st.markdown('<div class="card">', unsafe_allow_html=True)
 
 st.header("📊 Enter Your Mock Scores")
 
-# KEY FIX: bind sliders to session_state
 qa = st.slider("QA Score", 0, 100, key="qa_score")
 varc = st.slider("VARC Score", 0, 100, key="varc_score")
 di = st.slider("DI Score", 0, 100, key="di_score")
@@ -87,7 +101,7 @@ if st.button("✨ Generate Analysis"):
 # -------------------- MAIN FLOW --------------------
 if st.session_state.generated:
 
-    # -------------------- MODEL --------------------
+    # MODEL INPUT
     min_score = min(qa, varc, di, lr)
 
     user_data = pd.DataFrame([{
@@ -107,7 +121,7 @@ if st.session_state.generated:
     st.subheader("📉 Initial Weak Area")
     st.success(weak_topic)
 
-    # -------------------- QUESTION BANK --------------------
+    # QUESTION BANK
     question_bank = {
         "VARC": [
             {"q":"Synonym of Happy?","a":"joyful"},
@@ -127,7 +141,7 @@ if st.session_state.generated:
         ]
     }
 
-    # -------------------- TEST --------------------
+    # TEST
     if not st.session_state.questions:
         all_questions = []
         for sub in ["QA","VARC","DI","LR"]:
@@ -141,7 +155,7 @@ if st.session_state.generated:
         ans = st.text_input(f"Q{i+1}: {q['q']}", key=f"q_{i}")
         answers.append(ans)
 
-    # -------------------- SUBMIT --------------------
+    # SUBMIT
     if st.button("🚀 Submit Test"):
 
         subject_scores = {"QA":0,"VARC":0,"DI":0,"LR":0}
@@ -155,21 +169,23 @@ if st.session_state.generated:
             if answers[i].lower() == q['a']:
                 subject_scores[subject] += 1
 
-        # -------------------- MULTI WEAK --------------------
+        # MULTI WEAK
         min_score = min(subject_scores.values())
         weakest_subjects = [s for s in subject_scores if subject_scores[s] == min_score]
 
         st.error(f"Weak Areas: {', '.join(weakest_subjects)}")
 
-        # -------------------- UPDATE SLIDERS (FIXED) --------------------
-        st.session_state.qa_score = int((subject_scores["QA"]/2)*100)
-        st.session_state.varc_score = int((subject_scores["VARC"]/2)*100)
-        st.session_state.di_score = int((subject_scores["DI"]/2)*100)
-        st.session_state.lr_score = int((subject_scores["LR"]/2)*100)
+        # STORE UPDATE (NOT DIRECT UPDATE)
+        st.session_state.update_scores = {
+            "QA": int((subject_scores["QA"]/2)*100),
+            "VARC": int((subject_scores["VARC"]/2)*100),
+            "DI": int((subject_scores["DI"]/2)*100),
+            "LR": int((subject_scores["LR"]/2)*100),
+        }
 
-        st.success("✅ Sliders updated!")
+        st.success("✅ Scores will update!")
 
-        # -------------------- STREAK --------------------
+        # STREAK
         total = sum(subject_scores.values())
         if total >= 5:
             st.session_state.streak += 1
@@ -177,3 +193,6 @@ if st.session_state.generated:
             st.session_state.streak = 0
 
         st.markdown(f"<div class='streak'>🔥 Streak: {st.session_state.streak}</div>", unsafe_allow_html=True)
+
+        # 🔥 RERUN
+        st.rerun()
