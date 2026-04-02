@@ -3,8 +3,14 @@ import pickle
 import pandas as pd
 import random
 
+# -------------------- SESSION STATE INIT --------------------
 if "questions" not in st.session_state:
     st.session_state.questions = []
+if "streak" not in st.session_state:
+    st.session_state.streak = 0
+if "generated" not in st.session_state:
+    st.session_state.generated = False
+
 # -------------------- PAGE CONFIG --------------------
 st.set_page_config(page_title="CAT Prep AI", layout="centered")
 
@@ -14,20 +20,17 @@ st.markdown("""
 body {
     background-color: #f5f7fa;
 }
-
 .big-title {
     font-size:36px !important;
     font-weight:800;
     color:#6C63FF;
     text-align:center;
 }
-
 .sub-text {
     font-size:18px;
     color:#444;
     text-align:center;
 }
-
 div.stButton > button {
     background: linear-gradient(90deg, #6C63FF, #00C9A7);
     color: white;
@@ -36,7 +39,6 @@ div.stButton > button {
     font-size:16px;
     border: none;
 }
-
 div.stButton > button:hover {
     background: linear-gradient(90deg, #5a54d1, #00a98b);
 }
@@ -46,10 +48,6 @@ div.stButton > button:hover {
 # -------------------- LOAD MODELS --------------------
 weak_model = pickle.load(open('adaptive_weak_topic_model_large.pkl','rb'))
 mock_model = pickle.load(open('mock_generator_model.pkl','rb'))
-
-# -------------------- SESSION STATE (STREAK) --------------------
-if "streak" not in st.session_state:
-    st.session_state.streak = 0
 
 # -------------------- TITLE --------------------
 st.markdown('<p class="big-title">🎯 AI CAT Prep Assistant</p>', unsafe_allow_html=True)
@@ -65,16 +63,13 @@ lr = st.slider("LR Score", 0, 100, 50)
 
 lessons_done = st.slider("Lessons Completed", 0, 20, 5)
 
-# -------------------- BUTTON --------------------
+# -------------------- GENERATE BUTTON --------------------
 if st.button("✨ Generate Analysis"):
     st.session_state.generated = True
+    st.session_state.questions = []  # reset questions
 
-if "generated" in st.session_state:
-
-    # your models run here
-
-if st.button("🚀 Submit Test"):
-        # scoring logic
+# -------------------- MAIN FLOW --------------------
+if st.session_state.generated:
 
     # -------------------- MODEL 1 INPUT --------------------
     min_score = min(qa, varc, di, lr)
@@ -97,7 +92,7 @@ if st.button("🚀 Submit Test"):
     st.subheader("📉 Your Weak Area")
     st.success(weak_topic)
 
-    # -------------------- MODEL 2 INPUT --------------------
+    # -------------------- MODEL 2 --------------------
     model2_input = pd.DataFrame({
         'QA':[qa],
         'VARC':[varc],
@@ -145,32 +140,31 @@ if st.button("🚀 Submit Test"):
 
     # -------------------- MOCK TEST --------------------
     st.subheader("📝 Your Personalized Mock")
-    
+
     num_questions = 3
-    
-    # Store questions only once
-    if "questions" not in st.session_state:
+
+    if not st.session_state.questions:
         st.session_state.questions = random.sample(question_bank[topic], num_questions)
-    
+
     questions = st.session_state.questions
-    
-    # Store answers
+
     answers = []
-    
+
     for i, q in enumerate(questions):
         ans = st.text_input(f"Q{i+1}: {q['q']}", key=f"q_{i}")
         answers.append(ans)
-    
-    # -------------------- SUBMIT --------------------
+
+    # -------------------- SUBMIT BUTTON --------------------
     if st.button("🚀 Submit Test"):
-    
+
         score = 0
-    
+
         for i in range(num_questions):
             if answers[i].lower() == questions[i]['a']:
                 score += 1
-    
+
         st.success(f"🎯 Score: {score}/{num_questions}")
+
         # -------------------- STREAK --------------------
         if score == num_questions:
             st.session_state.streak += 1
