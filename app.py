@@ -17,31 +17,53 @@ st.set_page_config(page_title="CAT Prep AI", layout="centered")
 # -------------------- CUSTOM STYLING --------------------
 st.markdown("""
 <style>
+
+/* Background */
 body {
-    background-color: #f5f7fa;
+    background: linear-gradient(135deg, #eef2ff, #f8fafc);
 }
-.big-title {
-    font-size:36px !important;
+
+/* Title */
+.main-title {
+    font-size:40px;
     font-weight:800;
-    color:#6C63FF;
     text-align:center;
+    color:#4f46e5;
+    margin-bottom:5px;
 }
+
 .sub-text {
-    font-size:18px;
-    color:#444;
     text-align:center;
+    color:#6b7280;
+    margin-bottom:30px;
 }
+
+/* Card UI */
+.card {
+    background:white;
+    padding:20px;
+    border-radius:16px;
+    box-shadow:0px 8px 20px rgba(0,0,0,0.05);
+    margin-bottom:20px;
+}
+
+/* Buttons */
 div.stButton > button {
-    background: linear-gradient(90deg, #6C63FF, #00C9A7);
+    background: linear-gradient(90deg, #6366f1, #22c55e);
     color: white;
     border-radius: 12px;
     height: 3em;
     font-size:16px;
     border: none;
 }
-div.stButton > button:hover {
-    background: linear-gradient(90deg, #5a54d1, #00a98b);
+
+/* Streak */
+.streak {
+    font-size:20px;
+    font-weight:700;
+    color:#f59e0b;
 }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -50,10 +72,12 @@ weak_model = pickle.load(open('adaptive_weak_topic_model_large.pkl','rb'))
 mock_model = pickle.load(open('mock_generator_model.pkl','rb'))
 
 # -------------------- TITLE --------------------
-st.markdown('<p class="big-title">🎯 AI CAT Prep Assistant</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-text">Smarter prep. Better results.</p>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">🎯 AI CAT Prep Assistant</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-text">Smarter prep. Adaptive learning. Better results.</div>', unsafe_allow_html=True)
 
 # -------------------- INPUT --------------------
+st.markdown('<div class="card">', unsafe_allow_html=True)
+
 st.header("📊 Enter Your Mock Scores")
 
 qa = st.slider("QA Score", 0, 100, 50)
@@ -63,10 +87,12 @@ lr = st.slider("LR Score", 0, 100, 50)
 
 lessons_done = st.slider("Lessons Completed", 0, 20, 5)
 
+st.markdown('</div>', unsafe_allow_html=True)
+
 # -------------------- GENERATE BUTTON --------------------
 if st.button("✨ Generate Analysis"):
     st.session_state.generated = True
-    st.session_state.questions = []  # reset questions
+    st.session_state.questions = []
 
 # -------------------- MAIN FLOW --------------------
 if st.session_state.generated:
@@ -89,8 +115,10 @@ if st.session_state.generated:
     # -------------------- MODEL 1 --------------------
     weak_topic = weak_model.predict(user_data)[0]
 
+    st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("📉 Your Weak Area")
     st.success(weak_topic)
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # -------------------- MODEL 2 --------------------
     model2_input = pd.DataFrame({
@@ -103,8 +131,10 @@ if st.session_state.generated:
 
     topic = mock_model.predict(model2_input)[0]
 
+    st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("🧠 AI Recommended Topic")
     st.info(topic)
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # -------------------- QUESTION BANK --------------------
     question_bank = {
@@ -139,6 +169,8 @@ if st.session_state.generated:
     }
 
     # -------------------- MOCK TEST --------------------
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+
     st.subheader("📝 Your Personalized Mock")
 
     num_questions = 3
@@ -165,12 +197,16 @@ if st.session_state.generated:
 
         st.success(f"🎯 Score: {score}/{num_questions}")
 
+        # progress bar (UI only)
+        st.progress(score / num_questions)
+
         # -------------------- STREAK --------------------
         if score >= 2:
             st.session_state.streak += 1
         else:
             st.session_state.streak = 0
-        st.write(f"🔥 Current Streak: {st.session_state.streak}")
+
+        st.markdown(f'<div class="streak">🔥 Streak: {st.session_state.streak}</div>', unsafe_allow_html=True)
 
         # -------------------- FEEDBACK --------------------
         if score <= 1:
@@ -187,3 +223,5 @@ if st.session_state.generated:
         st.write(next_topic)
 
         st.write("💡 Tip: Focus on weak areas and analyze mistakes!")
+
+    st.markdown('</div>', unsafe_allow_html=True)
