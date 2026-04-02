@@ -73,7 +73,7 @@ if st.button("Generate Analysis"):
     topics = []
     
     for _ in range(5):
-        topic = mock_model.predict(user_data)[0]
+        topic = mock_model.predict(model2_input)[0]
         topics.append(topic)
 
     st.subheader("🧠 AI Recommended Mock Topics")
