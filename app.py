@@ -61,12 +61,13 @@ if st.button("Generate Analysis"):
     
     # -------------------- FORCE COLUMN ORDER --------------------
     
-    final_columns = ['QA','VARC','DI','LR',
-                     'QA_diff','VARC_diff','DI_diff','LR_diff',
-                     'LessonsDone','WeakTopicEncoded']
-    
-    user_data = user_data[final_columns]
-    
+    model2_input = pd.DataFrame({
+    'QA':[qa],
+    'VARC':[varc],
+    'DI':[di],
+    'LR':[lr],
+    'LessonsDone':[lessons_done]
+    })
     # -------------------- MODEL 2 --------------------
     
     topics = []
