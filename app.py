@@ -166,11 +166,10 @@ if st.session_state.generated:
         st.success(f"🎯 Score: {score}/{num_questions}")
 
         # -------------------- STREAK --------------------
-        if score == num_questions:
+        if score >= 2:
             st.session_state.streak += 1
         else:
             st.session_state.streak = 0
-
         st.write(f"🔥 Current Streak: {st.session_state.streak}")
 
         # -------------------- FEEDBACK --------------------
