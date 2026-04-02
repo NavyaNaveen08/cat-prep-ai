@@ -70,11 +70,8 @@ if st.button("Generate Analysis"):
     })
     # -------------------- MODEL 2 --------------------
     
-    topics = []
-    
-    for _ in range(5):
-        topic = mock_model.predict(model2_input)[0]
-        topics.append(topic)
+    topic = mock_model.predict(model2_input)[0]
+
 
     st.subheader("🧠 AI Recommended Mock Topics")
     st.write(topics)
