@@ -117,11 +117,6 @@ if st.session_state.generated:
 
     weak_topic = weak_model.predict(user_data)[0]
 
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("📉 Initial Weak Area (from scores)")
-    st.success(weak_topic)
-    st.markdown('</div>', unsafe_allow_html=True)
-
     # -------------------- QUESTION BANK --------------------
     question_bank = {
         "VARC": [
@@ -150,6 +145,12 @@ if st.session_state.generated:
         ]
     }
 
+    # Build lookup: question text → subject
+    question_to_subject = {}
+    for sub, qs in question_bank.items():
+        for q in qs:
+            question_to_subject[q["q"]] = sub
+
     # -------------------- MOCK TEST --------------------
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("📝 Adaptive Mock Test (All Subjects)")
@@ -162,7 +163,6 @@ if st.session_state.generated:
 
     questions = st.session_state.questions
 
-    # Only show input fields if test not yet submitted
     if not st.session_state.test_submitted:
         answers = []
         for i, q in enumerate(questions):
@@ -174,10 +174,7 @@ if st.session_state.generated:
             subject_counts = {"QA": 0, "VARC": 0, "DI": 0, "LR": 0}
 
             for i, q in enumerate(questions):
-                for sub in question_bank:
-                    if q in question_bank[sub]:
-                        subject = sub
-                        break
+                subject = question_to_subject[q["q"]]
                 subject_counts[subject] += 1
                 if answers[i].strip().lower() == q['a']:
                     subject_scores[subject] += 1
@@ -186,25 +183,23 @@ if st.session_state.generated:
             min_s = min(subject_scores.values())
             weakest_subjects = [s for s, sc in subject_scores.items() if sc == min_s]
 
-            # Update streak
             if total_score >= 5:
                 st.session_state.streak += 1
             else:
                 st.session_state.streak = 0
 
-            # Update slider scores
             st.session_state.qa_score = int((subject_scores["QA"] / 2) * 100)
             st.session_state.varc_score = int((subject_scores["VARC"] / 2) * 100)
             st.session_state.di_score = int((subject_scores["DI"] / 2) * 100)
             st.session_state.lr_score = int((subject_scores["LR"] / 2) * 100)
             st.session_state.pending_score_update = True
 
-            # Store results in session state so they survive rerun
             st.session_state.test_results = {
                 "subject_scores": subject_scores,
                 "subject_counts": subject_counts,
                 "total_score": total_score,
-                "weakest_subjects": weakest_subjects
+                "weakest_subjects": weakest_subjects,
+                "weak_topic": weak_topic  # ← store it here so it persists after rerun
             }
             st.session_state.test_submitted = True
             st.rerun()
@@ -216,6 +211,7 @@ if st.session_state.generated:
         subject_counts = res["subject_counts"]
         total_score = res["total_score"]
         weakest_subjects = res["weakest_subjects"]
+        saved_weak_topic = res["weak_topic"]
 
         st.subheader("📊 Your Performance")
         for sub in subject_scores:
@@ -224,8 +220,13 @@ if st.session_state.generated:
         st.error(f"📉 Weakest Areas: {', '.join(weakest_subjects)}")
         st.success(f"🎯 Total Score: {total_score}/8")
         st.progress(total_score / 8)
-
         st.markdown(f'<div class="streak">🔥 Streak: {st.session_state.streak}</div>', unsafe_allow_html=True)
+
+        # ---- WEAK TOPIC shown here, after Submit Test ----
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.subheader("📉 Initial Weak Area (from scores)")
+        st.success(saved_weak_topic)
+        st.markdown('</div>', unsafe_allow_html=True)
 
         st.info("📊 Scores saved! Scroll up and click **Generate Analysis** to see updated sliders.")
 
