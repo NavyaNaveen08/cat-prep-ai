@@ -86,10 +86,11 @@ if st.session_state.pending_score_update:
 st.markdown('<div class="card">', unsafe_allow_html=True)
 st.header("📊 Enter Your Mock Scores")
 
-qa = st.slider("QA Score", 0, 100, st.session_state.qa_score)
-varc = st.slider("VARC Score", 0, 100, st.session_state.varc_score)
-di = st.slider("DI Score", 0, 100, st.session_state.di_score)
-lr = st.slider("LR Score", 0, 100, st.session_state.lr_score)
+# Sliders using key= directly so session state updates reflect automatically
+qa = st.slider("QA Score", 0, 100, key="qa_score")
+varc = st.slider("VARC Score", 0, 100, key="varc_score")
+di = st.slider("DI Score", 0, 100, key="di_score")
+lr = st.slider("LR Score", 0, 100, key="lr_score")
 lessons_done = st.slider("Lessons Completed", 0, 20, 5)
 
 st.markdown('</div>', unsafe_allow_html=True)
@@ -188,6 +189,7 @@ if st.session_state.generated:
             else:
                 st.session_state.streak = 0
 
+            # Update scores via session state keys (sliders will reflect on next Generate)
             st.session_state.qa_score = int((subject_scores["QA"] / 2) * 100)
             st.session_state.varc_score = int((subject_scores["VARC"] / 2) * 100)
             st.session_state.di_score = int((subject_scores["DI"] / 2) * 100)
@@ -199,7 +201,7 @@ if st.session_state.generated:
                 "subject_counts": subject_counts,
                 "total_score": total_score,
                 "weakest_subjects": weakest_subjects,
-                "weak_topic": weak_topic  # ← store it here so it persists after rerun
+                "weak_topic": weak_topic
             }
             st.session_state.test_submitted = True
             st.rerun()
@@ -222,7 +224,6 @@ if st.session_state.generated:
         st.progress(total_score / 8)
         st.markdown(f'<div class="streak">🔥 Streak: {st.session_state.streak}</div>', unsafe_allow_html=True)
 
-        # ---- WEAK TOPIC shown here, after Submit Test ----
         st.markdown('<div class="card">', unsafe_allow_html=True)
         st.subheader("📉 Initial Weak Area (from scores)")
         st.success(saved_weak_topic)
