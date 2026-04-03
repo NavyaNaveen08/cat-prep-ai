@@ -86,11 +86,10 @@ if st.session_state.pending_score_update:
 st.markdown('<div class="card">', unsafe_allow_html=True)
 st.header("📊 Enter Your Mock Scores")
 
-# Sliders using key= directly so session state updates reflect automatically
-qa = st.slider("QA Score", 0, 100, key="qa_score")
-varc = st.slider("VARC Score", 0, 100, key="varc_score")
-di = st.slider("DI Score", 0, 100, key="di_score")
-lr = st.slider("LR Score", 0, 100, key="lr_score")
+qa = st.slider("QA Score", 0, 100, st.session_state.qa_score)
+varc = st.slider("VARC Score", 0, 100, st.session_state.varc_score)
+di = st.slider("DI Score", 0, 100, st.session_state.di_score)
+lr = st.slider("LR Score", 0, 100, st.session_state.lr_score)
 lessons_done = st.slider("Lessons Completed", 0, 20, 5)
 
 st.markdown('</div>', unsafe_allow_html=True)
@@ -117,6 +116,11 @@ if st.session_state.generated:
     }])
 
     weak_topic = weak_model.predict(user_data)[0]
+
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader("📉 Initial Weak Area (from scores)")
+    st.success(weak_topic)
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # -------------------- QUESTION BANK --------------------
     question_bank = {
@@ -146,7 +150,7 @@ if st.session_state.generated:
         ]
     }
 
-    # Build lookup: question text → subject
+    # FIX 1: Build lookup dict so every question maps to correct subject
     question_to_subject = {}
     for sub, qs in question_bank.items():
         for q in qs:
@@ -175,6 +179,7 @@ if st.session_state.generated:
             subject_counts = {"QA": 0, "VARC": 0, "DI": 0, "LR": 0}
 
             for i, q in enumerate(questions):
+                # FIX 1: use lookup instead of loop+break
                 subject = question_to_subject[q["q"]]
                 subject_counts[subject] += 1
                 if answers[i].strip().lower() == q['a']:
@@ -182,6 +187,8 @@ if st.session_state.generated:
 
             total_score = sum(subject_scores.values())
             min_s = min(subject_scores.values())
+
+            # FIX 2: collect ALL subjects tied at minimum, not just one
             weakest_subjects = [s for s, sc in subject_scores.items() if sc == min_s]
 
             if total_score >= 5:
@@ -189,7 +196,6 @@ if st.session_state.generated:
             else:
                 st.session_state.streak = 0
 
-            # Update scores via session state keys (sliders will reflect on next Generate)
             st.session_state.qa_score = int((subject_scores["QA"] / 2) * 100)
             st.session_state.varc_score = int((subject_scores["VARC"] / 2) * 100)
             st.session_state.di_score = int((subject_scores["DI"] / 2) * 100)
@@ -200,8 +206,7 @@ if st.session_state.generated:
                 "subject_scores": subject_scores,
                 "subject_counts": subject_counts,
                 "total_score": total_score,
-                "weakest_subjects": weakest_subjects,
-                "weak_topic": weak_topic
+                "weakest_subjects": weakest_subjects
             }
             st.session_state.test_submitted = True
             st.rerun()
@@ -213,7 +218,6 @@ if st.session_state.generated:
         subject_counts = res["subject_counts"]
         total_score = res["total_score"]
         weakest_subjects = res["weakest_subjects"]
-        saved_weak_topic = res["weak_topic"]
 
         st.subheader("📊 Your Performance")
         for sub in subject_scores:
@@ -222,12 +226,8 @@ if st.session_state.generated:
         st.error(f"📉 Weakest Areas: {', '.join(weakest_subjects)}")
         st.success(f"🎯 Total Score: {total_score}/8")
         st.progress(total_score / 8)
-        st.markdown(f'<div class="streak">🔥 Streak: {st.session_state.streak}</div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.subheader("📉 Initial Weak Area (from scores)")
-        st.success(saved_weak_topic)
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="streak">🔥 Streak: {st.session_state.streak}</div>', unsafe_allow_html=True)
 
         st.info("📊 Scores saved! Scroll up and click **Generate Analysis** to see updated sliders.")
 
