@@ -16,8 +16,6 @@ if "test_submitted" not in st.session_state:
     st.session_state.test_submitted = False
 if "test_results" not in st.session_state:
     st.session_state.test_results = None
-
-# SCORE TRACKING
 if "qa_score" not in st.session_state:
     st.session_state.qa_score = 50
 if "varc_score" not in st.session_state:
@@ -74,6 +72,40 @@ div.stButton > button {
 weak_model = pickle.load(open('adaptive_weak_topic_model_large.pkl','rb'))
 mock_model = pickle.load(open('mock_generator_model.pkl','rb'))
 
+# -------------------- QUESTION BANK (global, always available) --------------------
+question_bank = {
+    "VARC": [
+        {"q":"Synonym of Happy?","a":"joyful"},
+        {"q":"Antonym of Increase?","a":"decrease"},
+        {"q":"Meaning of Abundant?","a":"plenty"},
+        {"q":"Opposite of Difficult?","a":"easy"}
+    ],
+    "QA": [
+        {"q":"20% of 150?","a":"30"},
+        {"q":"2x+5=15, x=?","a":"5"},
+        {"q":"Square of 12?","a":"144"},
+        {"q":"10% of 200?","a":"20"}
+    ],
+    "DI": [
+        {"q":"Profit 20 on 100 → %?","a":"20"},
+        {"q":"Total 10+20+30?","a":"60"},
+        {"q":"Growth 50→75 %?","a":"50"},
+        {"q":"Avg 40,50,60?","a":"50"}
+    ],
+    "LR": [
+        {"q":"2,4,8,16,?","a":"32"},
+        {"q":"Odd: Apple, Banana, Car?","a":"car"},
+        {"q":"A=1,B=2,C=?","a":"3"},
+        {"q":"3,6,9,?","a":"12"}
+    ]
+}
+
+# Global lookup: question text → subject, always available on every rerun
+question_to_subject = {}
+for sub, qs in question_bank.items():
+    for item in qs:
+        question_to_subject[item["q"]] = sub
+
 # -------------------- TITLE --------------------
 st.markdown('<div class="main-title">🎯 AI CAT Prep Assistant</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-text">Smarter prep. Adaptive learning. Better results.</div>', unsafe_allow_html=True)
@@ -86,6 +118,7 @@ if st.session_state.pending_score_update:
 st.markdown('<div class="card">', unsafe_allow_html=True)
 st.header("📊 Enter Your Mock Scores")
 
+# Read current values from session state for slider defaults
 qa = st.slider("QA Score", 0, 100, st.session_state.qa_score)
 varc = st.slider("VARC Score", 0, 100, st.session_state.varc_score)
 di = st.slider("DI Score", 0, 100, st.session_state.di_score)
@@ -101,6 +134,11 @@ if st.button("✨ Generate Analysis"):
     st.session_state.test_submitted = False
     st.session_state.test_results = None
     st.session_state.pending_score_update = False
+    # Snapshot slider values at time of clicking Generate
+    st.session_state.qa_score = qa
+    st.session_state.varc_score = varc
+    st.session_state.di_score = di
+    st.session_state.lr_score = lr
 
 # -------------------- MAIN FLOW --------------------
 if st.session_state.generated:
@@ -121,40 +159,6 @@ if st.session_state.generated:
     st.subheader("📉 Initial Weak Area (from scores)")
     st.success(weak_topic)
     st.markdown('</div>', unsafe_allow_html=True)
-
-    # -------------------- QUESTION BANK --------------------
-    question_bank = {
-        "VARC": [
-            {"q":"Synonym of Happy?","a":"joyful"},
-            {"q":"Antonym of Increase?","a":"decrease"},
-            {"q":"Meaning of Abundant?","a":"plenty"},
-            {"q":"Opposite of Difficult?","a":"easy"}
-        ],
-        "QA": [
-            {"q":"20% of 150?","a":"30"},
-            {"q":"2x+5=15, x=?","a":"5"},
-            {"q":"Square of 12?","a":"144"},
-            {"q":"10% of 200?","a":"20"}
-        ],
-        "DI": [
-            {"q":"Profit 20 on 100 → %?","a":"20"},
-            {"q":"Total 10+20+30?","a":"60"},
-            {"q":"Growth 50→75 %?","a":"50"},
-            {"q":"Avg 40,50,60?","a":"50"}
-        ],
-        "LR": [
-            {"q":"2,4,8,16,?","a":"32"},
-            {"q":"Odd: Apple, Banana, Car?","a":"car"},
-            {"q":"A=1,B=2,C=?","a":"3"},
-            {"q":"3,6,9,?","a":"12"}
-        ]
-    }
-
-    # FIX 1: Build lookup dict so every question maps to correct subject
-    question_to_subject = {}
-    for sub, qs in question_bank.items():
-        for q in qs:
-            question_to_subject[q["q"]] = sub
 
     # -------------------- MOCK TEST --------------------
     st.markdown('<div class="card">', unsafe_allow_html=True)
@@ -178,22 +182,14 @@ if st.session_state.generated:
             subject_scores = {"QA": 0, "VARC": 0, "DI": 0, "LR": 0}
             subject_counts = {"QA": 0, "VARC": 0, "DI": 0, "LR": 0}
 
-            # Build lookup first
-            question_to_subject = {}
-            for sub, qs in question_bank.items():
-                for item in qs:
-                    question_to_subject[item["q"]] = sub
-
             for i, q in enumerate(questions):
-                subject = question_to_subject[q["q"]]
+                subject = question_to_subject[q["q"]]  # always works, built globally
                 subject_counts[subject] += 1
                 if answers[i].strip().lower() == q['a']:
                     subject_scores[subject] += 1
 
             total_score = sum(subject_scores.values())
             min_s = min(subject_scores.values())
-
-            # FIX 2: collect ALL subjects tied at minimum, not just one
             weakest_subjects = [s for s, sc in subject_scores.items() if sc == min_s]
 
             if total_score >= 5:
@@ -201,6 +197,7 @@ if st.session_state.generated:
             else:
                 st.session_state.streak = 0
 
+            # Update scores for sliders on next Generate
             st.session_state.qa_score = int((subject_scores["QA"] / 2) * 100)
             st.session_state.varc_score = int((subject_scores["VARC"] / 2) * 100)
             st.session_state.di_score = int((subject_scores["DI"] / 2) * 100)
@@ -216,7 +213,7 @@ if st.session_state.generated:
             st.session_state.test_submitted = True
             st.rerun()
 
-    # -------------------- SHOW RESULTS (persisted) --------------------
+    # -------------------- SHOW RESULTS --------------------
     if st.session_state.test_submitted and st.session_state.test_results:
         res = st.session_state.test_results
         subject_scores = res["subject_scores"]
@@ -231,9 +228,7 @@ if st.session_state.generated:
         st.error(f"📉 Weakest Areas: {', '.join(weakest_subjects)}")
         st.success(f"🎯 Total Score: {total_score}/8")
         st.progress(total_score / 8)
-
         st.markdown(f'<div class="streak">🔥 Streak: {st.session_state.streak}</div>', unsafe_allow_html=True)
-
         st.info("📊 Scores saved! Scroll up and click **Generate Analysis** to see updated sliders.")
 
         # -------------------- STUDY PLAN --------------------
