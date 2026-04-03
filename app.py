@@ -12,6 +12,10 @@ if "generated" not in st.session_state:
     st.session_state.generated = False
 if "pending_score_update" not in st.session_state:
     st.session_state.pending_score_update = False
+if "test_submitted" not in st.session_state:
+    st.session_state.test_submitted = False
+if "test_results" not in st.session_state:
+    st.session_state.test_results = None
 
 # SCORE TRACKING
 if "qa_score" not in st.session_state:
@@ -76,18 +80,16 @@ st.markdown('<div class="sub-text">Smarter prep. Adaptive learning. Better resul
 
 # -------------------- PENDING UPDATE BANNER --------------------
 if st.session_state.pending_score_update:
-    st.warning("⬆️ Your scores have been updated based on your mock test! Click **Generate Analysis** to start a new session with updated sliders.")
+    st.warning("⬆️ Your scores have been updated! Click **Generate Analysis** to start a new session with updated sliders.")
 
 # -------------------- INPUT --------------------
 st.markdown('<div class="card">', unsafe_allow_html=True)
-
 st.header("📊 Enter Your Mock Scores")
 
 qa = st.slider("QA Score", 0, 100, st.session_state.qa_score)
 varc = st.slider("VARC Score", 0, 100, st.session_state.varc_score)
 di = st.slider("DI Score", 0, 100, st.session_state.di_score)
 lr = st.slider("LR Score", 0, 100, st.session_state.lr_score)
-
 lessons_done = st.slider("Lessons Completed", 0, 20, 5)
 
 st.markdown('</div>', unsafe_allow_html=True)
@@ -96,19 +98,16 @@ st.markdown('</div>', unsafe_allow_html=True)
 if st.button("✨ Generate Analysis"):
     st.session_state.generated = True
     st.session_state.questions = []
-    st.session_state.pending_score_update = False  # scores already applied via slider defaults
+    st.session_state.test_submitted = False
+    st.session_state.test_results = None
+    st.session_state.pending_score_update = False
 
 # -------------------- MAIN FLOW --------------------
 if st.session_state.generated:
 
-    # -------------------- MODEL 1 --------------------
     min_score = min(qa, varc, di, lr)
-
     user_data = pd.DataFrame([{
-        'QA': qa,
-        'VARC': varc,
-        'DI': di,
-        'LR': lr,
+        'QA': qa, 'VARC': varc, 'DI': di, 'LR': lr,
         'QA_diff': qa - min_score,
         'VARC_diff': varc - min_score,
         'DI_diff': di - min_score,
@@ -157,93 +156,88 @@ if st.session_state.generated:
 
     if not st.session_state.questions:
         all_questions = []
-        for sub in ["QA","VARC","DI","LR"]:
+        for sub in ["QA", "VARC", "DI", "LR"]:
             all_questions += random.sample(question_bank[sub], 2)
         st.session_state.questions = all_questions
 
     questions = st.session_state.questions
-    answers = []
 
-    for i, q in enumerate(questions):
-        ans = st.text_input(f"Q{i+1}: {q['q']}", key=f"q_{i}")
-        answers.append(ans)
-
-    # -------------------- SUBMIT --------------------
-    if st.button("🚀 Submit Test"):
-
-        subject_scores = {"QA":0,"VARC":0,"DI":0,"LR":0}
-        subject_counts = {"QA":0,"VARC":0,"DI":0,"LR":0}
-
+    # Only show input fields if test not yet submitted
+    if not st.session_state.test_submitted:
+        answers = []
         for i, q in enumerate(questions):
-            for sub in question_bank:
-                if q in question_bank[sub]:
-                    subject = sub
-                    break
+            ans = st.text_input(f"Q{i+1}: {q['q']}", key=f"q_{i}")
+            answers.append(ans)
 
-            subject_counts[subject] += 1
+        if st.button("🚀 Submit Test"):
+            subject_scores = {"QA": 0, "VARC": 0, "DI": 0, "LR": 0}
+            subject_counts = {"QA": 0, "VARC": 0, "DI": 0, "LR": 0}
 
-            if answers[i].lower() == q['a']:
-                subject_scores[subject] += 1
+            for i, q in enumerate(questions):
+                for sub in question_bank:
+                    if q in question_bank[sub]:
+                        subject = sub
+                        break
+                subject_counts[subject] += 1
+                if answers[i].strip().lower() == q['a']:
+                    subject_scores[subject] += 1
 
-        # -------------------- PERFORMANCE --------------------
+            total_score = sum(subject_scores.values())
+            min_s = min(subject_scores.values())
+            weakest_subjects = [s for s, sc in subject_scores.items() if sc == min_s]
+
+            # Update streak
+            if total_score >= 5:
+                st.session_state.streak += 1
+            else:
+                st.session_state.streak = 0
+
+            # Update slider scores
+            st.session_state.qa_score = int((subject_scores["QA"] / 2) * 100)
+            st.session_state.varc_score = int((subject_scores["VARC"] / 2) * 100)
+            st.session_state.di_score = int((subject_scores["DI"] / 2) * 100)
+            st.session_state.lr_score = int((subject_scores["LR"] / 2) * 100)
+            st.session_state.pending_score_update = True
+
+            # Store results in session state so they survive rerun
+            st.session_state.test_results = {
+                "subject_scores": subject_scores,
+                "subject_counts": subject_counts,
+                "total_score": total_score,
+                "weakest_subjects": weakest_subjects
+            }
+            st.session_state.test_submitted = True
+            st.rerun()
+
+    # -------------------- SHOW RESULTS (persisted) --------------------
+    if st.session_state.test_submitted and st.session_state.test_results:
+        res = st.session_state.test_results
+        subject_scores = res["subject_scores"]
+        subject_counts = res["subject_counts"]
+        total_score = res["total_score"]
+        weakest_subjects = res["weakest_subjects"]
+
         st.subheader("📊 Your Performance")
-
         for sub in subject_scores:
             st.write(f"{sub}: {subject_scores[sub]}/{subject_counts[sub]}")
 
-        # -------------------- MULTIPLE WEAK AREAS --------------------
-        min_score = min(subject_scores.values())
-        weakest_subjects = [sub for sub, score in subject_scores.items() if score == min_score]
-
         st.error(f"📉 Weakest Areas: {', '.join(weakest_subjects)}")
-
-        total_score = sum(subject_scores.values())
         st.success(f"🎯 Total Score: {total_score}/8")
-
         st.progress(total_score / 8)
 
-        # -------------------- UPDATE SCORES (applied on next Generate) --------------------
-        st.session_state.qa_score = int((subject_scores["QA"] / 2) * 100)
-        st.session_state.varc_score = int((subject_scores["VARC"] / 2) * 100)
-        st.session_state.di_score = int((subject_scores["DI"] / 2) * 100)
-        st.session_state.lr_score = int((subject_scores["LR"] / 2) * 100)
-        st.session_state.pending_score_update = True
-
-        st.info("📊 Scores saved! Scroll up and click **Generate Analysis** again to see updated sliders.")
-
-        # -------------------- STREAK --------------------
-        if total_score >= 5:
-            st.session_state.streak += 1
-        else:
-            st.session_state.streak = 0
-
         st.markdown(f'<div class="streak">🔥 Streak: {st.session_state.streak}</div>', unsafe_allow_html=True)
+
+        st.info("📊 Scores saved! Scroll up and click **Generate Analysis** to see updated sliders.")
 
         # -------------------- STUDY PLAN --------------------
         st.markdown('<div class="card">', unsafe_allow_html=True)
         st.subheader("📚 Personalized Study Plan")
 
         study_plan = {
-            "QA": [
-                "Revise arithmetic formulas",
-                "Practice 10 quant questions",
-                "Focus on weak topics"
-            ],
-            "VARC": [
-                "Read 2 articles (Aeon/TOI)",
-                "Practice RC passages",
-                "Revise vocabulary"
-            ],
-            "DI": [
-                "Solve DI sets",
-                "Practice graphs/tables",
-                "Improve calculations"
-            ],
-            "LR": [
-                "Solve puzzles",
-                "Practice arrangements",
-                "Work on patterns"
-            ]
+            "QA": ["Revise arithmetic formulas", "Practice 10 quant questions", "Focus on weak topics"],
+            "VARC": ["Read 2 articles (Aeon/TOI)", "Practice RC passages", "Revise vocabulary"],
+            "DI": ["Solve DI sets", "Practice graphs/tables", "Improve calculations"],
+            "LR": ["Solve puzzles", "Practice arrangements", "Work on patterns"]
         }
 
         for sub in weakest_subjects:
