@@ -178,8 +178,13 @@ if st.session_state.generated:
             subject_scores = {"QA": 0, "VARC": 0, "DI": 0, "LR": 0}
             subject_counts = {"QA": 0, "VARC": 0, "DI": 0, "LR": 0}
 
+            # Build lookup first
+            question_to_subject = {}
+            for sub, qs in question_bank.items():
+                for item in qs:
+                    question_to_subject[item["q"]] = sub
+
             for i, q in enumerate(questions):
-                # FIX 1: use lookup instead of loop+break
                 subject = question_to_subject[q["q"]]
                 subject_counts[subject] += 1
                 if answers[i].strip().lower() == q['a']:
