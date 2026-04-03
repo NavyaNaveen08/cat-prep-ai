@@ -10,21 +10,10 @@ if "streak" not in st.session_state:
     st.session_state.streak = 0
 if "generated" not in st.session_state:
     st.session_state.generated = False
-if "pending_update" not in st.session_state:
-    st.session_state.pending_update = None
+if "pending_score_update" not in st.session_state:
+    st.session_state.pending_score_update = False
 
-# APPLY UPDATE BEFORE UI LOADS
-if st.session_state.pending_update is not None:
-    upd = st.session_state.pending_update
-
-    st.session_state.qa_score = upd["QA"]
-    st.session_state.varc_score = upd["VARC"]
-    st.session_state.di_score = upd["DI"]
-    st.session_state.lr_score = upd["LR"]
-
-    st.session_state.pending_update = None
-
-# NEW: SCORE TRACKING
+# SCORE TRACKING
 if "qa_score" not in st.session_state:
     st.session_state.qa_score = 50
 if "varc_score" not in st.session_state:
@@ -85,6 +74,10 @@ mock_model = pickle.load(open('mock_generator_model.pkl','rb'))
 st.markdown('<div class="main-title">🎯 AI CAT Prep Assistant</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-text">Smarter prep. Adaptive learning. Better results.</div>', unsafe_allow_html=True)
 
+# -------------------- PENDING UPDATE BANNER --------------------
+if st.session_state.pending_score_update:
+    st.warning("⬆️ Your scores have been updated based on your mock test! Click **Generate Analysis** to start a new session with updated sliders.")
+
 # -------------------- INPUT --------------------
 st.markdown('<div class="card">', unsafe_allow_html=True)
 
@@ -103,6 +96,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 if st.button("✨ Generate Analysis"):
     st.session_state.generated = True
     st.session_state.questions = []
+    st.session_state.pending_score_update = False  # scores already applied via slider defaults
 
 # -------------------- MAIN FLOW --------------------
 if st.session_state.generated:
@@ -190,7 +184,6 @@ if st.session_state.generated:
 
             if answers[i].lower() == q['a']:
                 subject_scores[subject] += 1
-            st.rerun()
 
         # -------------------- PERFORMANCE --------------------
         st.subheader("📊 Your Performance")
@@ -209,14 +202,14 @@ if st.session_state.generated:
 
         st.progress(total_score / 8)
 
-        # -------------------- UPDATE SCORES --------------------
-        st.session_state.pending_update = {
-            "QA": int((subject_scores["QA"] / 2) * 100),
-            "VARC": int((subject_scores["VARC"] / 2) * 100),
-            "DI": int((subject_scores["DI"] / 2) * 100),
-            "LR": int((subject_scores["LR"] / 2) * 100),
-        }
-        st.success("📊 Scores updated based on your performance!")
+        # -------------------- UPDATE SCORES (applied on next Generate) --------------------
+        st.session_state.qa_score = int((subject_scores["QA"] / 2) * 100)
+        st.session_state.varc_score = int((subject_scores["VARC"] / 2) * 100)
+        st.session_state.di_score = int((subject_scores["DI"] / 2) * 100)
+        st.session_state.lr_score = int((subject_scores["LR"] / 2) * 100)
+        st.session_state.pending_score_update = True
+
+        st.info("📊 Scores saved! Scroll up and click **Generate Analysis** again to see updated sliders.")
 
         # -------------------- STREAK --------------------
         if total_score >= 5:
@@ -228,7 +221,6 @@ if st.session_state.generated:
 
         # -------------------- STUDY PLAN --------------------
         st.markdown('<div class="card">', unsafe_allow_html=True)
-
         st.subheader("📚 Personalized Study Plan")
 
         study_plan = {
